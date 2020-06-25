@@ -23,9 +23,9 @@ def get_res(img):
     img_pil = Image.fromarray(img)
     
     with torch.no_grad():
-        depth_map, depth_im = infer_depth("mono_640x192", img_pil)
+        depth_map, depth_im = infer_depth("mono+stereo_1024x320", img_pil)
         masks, masks_im = infer_segmentation("yolact_plus_resnet50_54_800000.pth", img)
-        depth_map = depth_map[0, 0] * 5.4
+        depth_map = depth_map[0, 0]# * 5.4
         
     res_img = img.copy()
     colors = np.random.randint(0, 255, (masks.shape[0], 3))
