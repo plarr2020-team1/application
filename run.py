@@ -18,8 +18,6 @@ try:
 except:
     pass
 
-cap = cv2.VideoCapture(video_source)
-
 def get_res(img):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img_pil = Image.fromarray(img)
@@ -27,7 +25,7 @@ def get_res(img):
     with torch.no_grad():
         depth_map, depth_im = infer_depth("mono_640x192", img_pil)
         masks, masks_im = infer_segmentation("yolact_plus_resnet50_54_800000.pth", img)
-        depth_map = depth_map[0, 0]
+        depth_map = depth_map[0, 0] * 5.4
         
     res_img = img.copy()
     colors = np.random.randint(0, 255, (masks.shape[0], 3))
@@ -58,23 +56,32 @@ def get_res(img):
         res_img = cv2.addWeighted(res_img, 1, (c * np.concatenate([m, m, m], -1)).astype(np.uint8), 0.3, 0)
         
     return img, res_img
-    
+
+cap = cv2.VideoCapture(video_source)
+fps = cap.get(cv2.CAP_PROP_FPS) / 2
+size = (
+    int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+    int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+)
+out = cv2.VideoWriter('result.mp4', cv2.VideoWriter_fourcc('M','P','4','V'), fps, size) 
 
 while(cap.isOpened()):
     ret, frame = cap.read()
+    if not ret:
+        break
 
     img, res_img = get_res(frame)
     
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     res_img = cv2.cvtColor(res_img, cv2.COLOR_RGB2BGR)
-    
-    im_v = cv2.vconcat([img, res_img])
 
-
-#    cv2.imshow('frame', im_v)
+    out.write(res_img)
+    # im_v = cv2.vconcat([img, res_img])
+    # cv2.imshow('frame', im_v)
     cv2.imshow('frame', res_img)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
+out.release()
 cap.release()
 cv2.destroyAllWindows()
