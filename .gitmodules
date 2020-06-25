@@ -1,0 +1,3 @@
+[submodule "monoculardepth"]
+	path = monoculardepth
+	url = git@github.com:plarr2020-team1/monoculardepth.git
