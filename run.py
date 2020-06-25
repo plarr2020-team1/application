@@ -65,7 +65,12 @@ size = (
 )
 out = cv2.VideoWriter('result.mp4', cv2.VideoWriter_fourcc('M','P','4','V'), fps, size) 
 
+counter = 0
 while(cap.isOpened()):
+    counter += 1
+    if counter % 3 != 0:
+        continue
+    counter = 0
     ret, frame = cap.read()
     if not ret:
         break
