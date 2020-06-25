@@ -1,3 +1,6 @@
 [submodule "monoculardepth"]
 	path = monoculardepth
 	url = git@github.com:plarr2020-team1/monoculardepth.git
+[submodule "object-detection-segmentation"]
+	path = object-detection-segmentation
+	url = git@github.com:plarr2020-team1/object-detection-segmentation.git
