@@ -71,7 +71,8 @@ while(cap.isOpened()):
     im_v = cv2.vconcat([img, res_img])
 
 
-    cv2.imshow('frame', im_v)
+#    cv2.imshow('frame', im_v)
+    cv2.imshow('frame', res_img)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
