@@ -18,10 +18,25 @@ def get_res(img):
         depth_map = depth_map[0, 0]# * 5.4
         
     res_img = img.copy()
-    colors = np.random.randint(0, 255, (masks.shape[0], 3))
+    
+    def get_threshold(x):
+        if x < 2: # less than 2m
+            return 0
+        elif x < 5: # less than 5m
+            return 1
+        elif x < 8: # less than 8m
+            return 2
+        return 3
+
+    colors = {
+        0: tuple([229, 20, 0]),
+        1: tuple([250, 104, 0]),
+        2: tuple([227, 200, 0]),
+        3: tuple([27, 161, 226])
+    }
 
     i = 0
-    for m, c in zip(masks, colors):
+    for m in masks:
         i+=1
         person_depth = depth_map * np.squeeze(m, -1)
         try:
@@ -30,6 +45,8 @@ def get_res(img):
         except ValueError:
             #invalid avg_depth
             continue
+
+        c = colors[get_threshold(avg_depth)]
         
         CENTER = (y, x)
         res_img = cv2.circle(res_img, CENTER, int(math.e ** (-avg_depth/2) * 100), tuple([int(x) for x in c]), -1)
@@ -43,6 +60,6 @@ def get_res(img):
         text_origin = (CENTER[0] - text_size[0] // 2, CENTER[1] + text_size[1] // 2)
         cv2.putText(res_img, TEXT, text_origin, TEXT_FACE, TEXT_SCALE, (255,255,255), TEXT_THICKNESS, cv2.LINE_AA)
 
-        res_img = cv2.addWeighted(res_img, 1, (c * np.concatenate([m, m, m], -1)).astype(np.uint8), 0.3, 0)
+        res_img = cv2.addWeighted(res_img, 1, (np.array(c) * np.concatenate([m, m, m], -1)).astype(np.uint8), 0.3, 0)
         
     return img, res_img
