@@ -14,7 +14,7 @@ def get_res(img):
     
     with torch.no_grad():
         depth_map, depth_im = infer_depth("mono+stereo_1024x320", img_pil)
-        masks, masks_im = infer_segmentation("yolact_plus_resnet50_54_800000.pth", img)
+        masks, masks_im, boxes = infer_segmentation("yolact_plus_resnet50_54_800000.pth", img)
         depth_map = depth_map[0, 0]# * 5.4
         
     res_img = img.copy()
@@ -35,15 +35,32 @@ def get_res(img):
         3: tuple([27, 161, 226])
     }
 
-    i = 0
-    for m in masks:
-        i+=1
+    h = len(img)
+    avg_human_height = 1700  # in mm
+    padding = 0
+
+    # Find the scale
+    scales = []
+    human_depths = []
+    for i, m in enumerate(masks):
         person_depth = depth_map * np.squeeze(m, -1)
         try:
             avg_depth = person_depth[np.where(person_depth != 0)].mean()
+            human_depths.append(avg_depth)
+        except ValueError:
+            continue
+        if boxes[i][1] > padding and boxes[i][3] < h - padding:
+            scales.append(avg_human_height / (avg_depth * (boxes[i][3] - boxes[i][1])))
+
+    avg_scale = np.mean(scales) if len(scales) > 1 else 1
+
+    for i, m in enumerate(masks):
+        person_depth = depth_map * np.squeeze(m, -1)
+        try:
+            avg_depth = human_depths[i] * avg_scale
             x, y = int(np.where(person_depth != 0)[0].mean()), int(np.where(person_depth != 0)[1].mean())
         except ValueError:
-            #invalid avg_depth
+            #invalid x, y
             continue
 
         c = colors[get_threshold(avg_depth)]
