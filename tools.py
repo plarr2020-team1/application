@@ -8,7 +8,7 @@ from PIL import Image
 from monodepth2.infer import infer_depth
 from yolact.infer import infer_segmentation
 
-def get_res(img):
+def get_res(img, depth_merger='mean'):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img_pil = Image.fromarray(img)
     
@@ -40,7 +40,12 @@ def get_res(img):
         i+=1
         person_depth = depth_map * np.squeeze(m, -1)
         try:
-            avg_depth = person_depth[np.where(person_depth != 0)].mean()
+            if depth_merger == 'mean':
+                avg_depth = person_depth[np.where(person_depth != 0)].mean()
+            elif depth_merger == 'median': 
+                avg_depth = np.median(person_depth[np.where(person_depth != 0)])
+            else:
+                raise Exception("Undefined depth_merger error!")
             x, y = int(np.where(person_depth != 0)[0].mean()), int(np.where(person_depth != 0)[1].mean())
         except ValueError:
             #invalid avg_depth

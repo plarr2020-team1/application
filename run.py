@@ -11,8 +11,10 @@ from tools import get_res
 
 parser = argparse.ArgumentParser(description='Social Distancing App.')
 parser.add_argument('--video_source', default=0, type=str, help='It can be a video path or webcam id.')
+parser.add_argument('--depth_merger', default='mean', type=str, help='It can be mean or median')
 args = parser.parse_args()
 
+depth_merger = args.depth_merger
 video_source = args.video_source
 try:
     video_source = int(video_source)
@@ -37,7 +39,7 @@ while(cap.isOpened()):
     if not ret:
         break
 
-    img, res_img = get_res(frame)
+    img, res_img = get_res(frame, depth_merger)
     
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     res_img = cv2.cvtColor(res_img, cv2.COLOR_RGB2BGR)
