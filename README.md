@@ -11,6 +11,8 @@ pip install -e monoculardepth/monodepth2
 
 pip install -e object-detection-segmentation/yolact 
 pip install -e git+https://github.com/CharlesShang/DCNv2@master#egg=dcnv2
+
+pip install -e tracking_wo_bnw
 ```
 
 ## Usage
