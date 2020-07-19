@@ -8,13 +8,16 @@ from PIL import Image
 from monodepth2.infer import infer_depth
 from yolact.infer import infer_segmentation
 
-def get_res(img, depth_merger='mean'):
+# Monodepth2 assumes during training that intrinsics of all views are identical
+K = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+
+def get_res(img, scale, depth_merger='mean', given_K = False):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img_pil = Image.fromarray(img)
     
     with torch.no_grad():
         depth_map, depth_im = infer_depth("mono+stereo_1024x320", img_pil)
-        masks, masks_im = infer_segmentation("yolact_plus_resnet50_54_800000.pth", img)
+        masks, masks_im, boxes = infer_segmentation("yolact_plus_resnet50_54_800000.pth", img)
         depth_map = depth_map[0, 0]# * 5.4
         
     res_img = img.copy()
@@ -35,15 +38,41 @@ def get_res(img, depth_merger='mean'):
         3: tuple([27, 161, 226])
     }
 
-    i = 0
-    for m in masks:
-        i+=1
+    h = len(img)
+    avg_human_height = 1.7  # in m
+    padding = 0
+
+    # Find the scale
+    new_sum_scales = 0
+    new_num_human = 0
+    human_depths = []
+    for i, m in enumerate(masks):
+        person_depth = depth_map * np.squeeze(m, -1)
+        try:
+            avg_depth = person_depth[np.where(person_depth != 0)].mean()
+            human_depths.append(avg_depth)
+        except ValueError:
+            continue
+        if given_K and boxes[i][0] > padding and boxes[i][2] < h - padding:
+            # scale = K(1,1) * Y / v where Y = avg human height and v is vertical pixel difference
+            new_sum_scales += avg_human_height * K[1][1] / (boxes[i][2] - boxes[i][0])
+            new_num_human += 1
+
+    # Accumulate scale across frames
+    if given_K and new_num_human > 1:
+        sum_scales = new_sum_scales + scale['avg'] * scale['num_human']
+        # Check overflow
+        if abs(sum_scales) != np.inf:
+            scale['num_human'] += new_num_human
+            scale['avg'] = float(sum_scales) / scale['num_human']
+
+    for i, m in enumerate(masks):
         person_depth = depth_map * np.squeeze(m, -1)
         try:
             if depth_merger == 'mean':
-                avg_depth = person_depth[np.where(person_depth != 0)].mean()
-            elif depth_merger == 'median': 
-                avg_depth = np.median(person_depth[np.where(person_depth != 0)])
+                avg_depth = human_depths[i]
+            elif depth_merger == 'median':
+                avg_depth = np.median(human_depths[i])
             else:
                 raise Exception("Undefined depth_merger error!")
             x, y = int(np.where(person_depth != 0)[0].mean()), int(np.where(person_depth != 0)[1].mean())
@@ -51,6 +80,10 @@ def get_res(img, depth_merger='mean'):
             #invalid avg_depth
             continue
 
+        if np.isnan(avg_depth):
+            continue
+        if given_K:
+            avg_depth = avg_depth * scale['avg']
         c = colors[get_threshold(avg_depth)]
         
         CENTER = (y, x)

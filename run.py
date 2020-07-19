@@ -12,10 +12,12 @@ from tools import get_res
 parser = argparse.ArgumentParser(description='Social Distancing App.')
 parser.add_argument('--video_source', default=0, type=str, help='It can be a video path or webcam id.')
 parser.add_argument('--depth_merger', default='mean', type=str, help='It can be mean or median')
+parser.add_argument('--given_K', action='store_true', help='If intrinsics matrix (K) is given')
 args = parser.parse_args()
 
 depth_merger = args.depth_merger
 video_source = args.video_source
+given_K = args.given_K
 try:
     video_source = int(video_source)
 except:
@@ -30,6 +32,10 @@ size = (
 out = cv2.VideoWriter('result.mp4', cv2.VideoWriter_fourcc('M','P','4','V'), fps, size) 
 
 counter = 0
+scale = {
+    'avg': 1,
+    'num_human': 0
+}
 while(cap.isOpened()):
     counter += 1
     if counter % 3 != 0:
@@ -39,7 +45,7 @@ while(cap.isOpened()):
     if not ret:
         break
 
-    img, res_img = get_res(frame, depth_merger)
+    img, res_img = get_res(frame, scale, depth_merger, given_K)
     
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     res_img = cv2.cvtColor(res_img, cv2.COLOR_RGB2BGR)
