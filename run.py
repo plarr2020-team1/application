@@ -1,12 +1,6 @@
 import cv2
-import math
-import torch
 import argparse
-import numpy as np
-
-from PIL import Image
-from monodepth2.infer import infer_depth, load_model
-from yolact.infer import infer_segmentation
+from monodepth2.infer import load_model
 from tools import get_res
 
 if __name__ == '__main__':
