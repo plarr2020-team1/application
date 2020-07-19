@@ -12,7 +12,7 @@ from mannequinchallenge.infer import infer_depth as mannequin_infer
 from tracktor.utils import interpolate
 from torchvision.transforms import ToTensor, Compose, Resize, ToPILImage
 
-def merge_masks(res_img, masks, masks_im, boxes, depth_merger, depth_map, inference):    
+def merge_masks(res_img, masks, masks_im, boxes, depth_merger, depth_map, inference, scale, given_K):    
     def get_threshold(x):
         if x < 2: # less than 2m
             return 0
@@ -29,22 +29,52 @@ def merge_masks(res_img, masks, masks_im, boxes, depth_merger, depth_map, infere
         3: tuple([27, 161, 226])
     }
 
-    i = 0
-    for m in masks:
-        i+=1
+    h = len(res_img)
+    avg_human_height = 1.7  # in m
+    padding = 0
+
+    # Find the scale
+    new_sum_scales = 0
+    new_num_human = 0
+    human_depths = []
+    for i, m in enumerate(masks):
+        person_depth = depth_map * np.squeeze(m, -1)
+        try:
+            avg_depth = person_depth[np.where(person_depth != 0)].mean()
+            human_depths.append(avg_depth)
+        except ValueError:
+            continue
+        if given_K and boxes[i][0] > padding and boxes[i][2] < h - padding:
+            # scale = K(1,1) * Y / v where Y = avg human height and v is vertical pixel difference
+            new_sum_scales += avg_human_height * K[1][1] / (boxes[i][2] - boxes[i][0])
+            new_num_human += 1
+
+    # Accumulate scale across frames
+    if given_K and new_num_human > 1:
+        sum_scales = new_sum_scales + scale['avg'] * scale['num_human']
+        # Check overflow
+        if abs(sum_scales) != np.inf:
+            scale['num_human'] += new_num_human
+            scale['avg'] = float(sum_scales) / scale['num_human']
+
+    for i, m in enumerate(masks):
         person_depth = depth_map * np.squeeze(m, -1)
         try:
             if depth_merger == 'mean':
-                avg_depth = person_depth[np.where(person_depth != 0)].mean()
-            elif depth_merger == 'median': 
-                avg_depth = np.median(person_depth[np.where(person_depth != 0)])
+                avg_depth = human_depths[i]
+            elif depth_merger == 'median':
+                avg_depth = np.median(human_depths[i])
             else:
                 raise Exception("Undefined depth_merger error!")
             x, y = int(np.where(person_depth != 0)[0].mean()), int(np.where(person_depth != 0)[1].mean())
         except ValueError:
-            #invalid avg_depth
+            #invalid x, y
             continue
 
+        if np.isnan(avg_depth):
+            continue
+        if given_K:
+            avg_depth = avg_depth * scale['avg']
         c = colors[get_threshold(avg_depth)]
         
         CENTER = (y, x)
@@ -120,8 +150,11 @@ def merge_boxes(res_img, results, depth_merger, depth_map, inference):
         cv2.putText(res_img, TEXT, text_origin, TEXT_FACE, TEXT_SCALE, (255,255,255), TEXT_THICKNESS, cv2.LINE_AA)
 
     return res_img
+# Monodepth2 assumes during training that intrinsics of all views are identical. We will make the same assumption for
+# Mannequin too.
+K = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
-def get_res(img, inference, tracker, depth_merger='mean'):
+def get_res(img, inference, scale, tracker, depth_merger='mean', given_K=False):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img_pil = Image.fromarray(img)
 
@@ -129,9 +162,12 @@ def get_res(img, inference, tracker, depth_merger='mean'):
     results = None
     
     with torch.no_grad():
-        if inference == 'monodepth':
-            depth_map, depth_im = monodepth_infer("mono+stereo_1024x320", img_pil)
-            depth_map = depth_map[0, 0]
+        if inference['name'] == 'monodepth':
+            depth_map, depth_im = monodepth_infer(inference['encoder'],
+                                                  inference['depth_decoder'],
+                                                  inference['input_size'],
+                                                  img_pil)
+            depth_map = depth_map[0, 0] # * 5.4
         else:  # mannequin
             depth_map, depth_im = mannequin_infer(img_pil)
             depth_map = (255 - depth_map) / 7
@@ -153,6 +189,6 @@ def get_res(img, inference, tracker, depth_merger='mean'):
     res_img = img.copy()
     
     if tracker == None:
-        return img, merge_masks(res_img, masks, masks_im, boxes, depth_merger, depth_map, inference)
+        return img, merge_masks(res_img, masks, masks_im, boxes, depth_merger, depth_map, inference['name'], scale, given_K)
 
-    return img, merge_boxes(res_img, results, depth_merger, depth_map, inference)
+    return img, merge_boxes(res_img, results, depth_merger, depth_map, inference['name'])
