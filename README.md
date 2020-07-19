@@ -12,11 +12,15 @@ pip install -e monoculardepth/mannequinchallenge
 
 pip install -e object-detection-segmentation/yolact 
 pip install -e git+https://github.com/CharlesShang/DCNv2@master#egg=dcnv2
+
+pip install -e tracking_wo_bnw
 ```
 Retrieve checkpoint for `mannequinchallenge`
 ```bash
 cd monoculardepth/mannequinchallenge && ./fetch_checkpoints.sh && cd ../..
 ```
+
+Download https://vision.in.tum.de/webshare/u/meinhard/tracking_wo_bnw-output_v2.zip and unzip into `tracking_wo_bnw/output`.
 
 ## Usage
 ```bash

@@ -3,14 +3,28 @@ import argparse
 from monodepth2.infer import load_model
 from tools import get_res
 
+import sys 
+sys.path.append('./tools')
+
+from tracktor_utils import tracker_obj
+from tracktor.utils import interpolate
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Social Distancing App.')
     parser.add_argument('--video_source', default=0, type=str, help='It can be a video path or webcam id.')
     parser.add_argument('--depth_merger', default='mean', type=str, help='It can be mean or median')
     parser.add_argument('--inference', default='monodepth', choices=['monodepth', 'mannequin'], type=str,
                         help='It can be monodepth or mannequin')
+    parser.add_argument('--with_tracker', action='store_true', help='Tracker or YOLACT.')
     parser.add_argument('--given_K', action='store_true', help='If intrinsics matrix (K) is given')
+    
     args = parser.parse_args()
+
+    tracker = None
+
+    if args.with_tracker:
+        tracker = tracker_obj("./tracking_wo_bnw")
+        tracker.reset()
 
     depth_merger = args.depth_merger
     video_source = args.video_source
@@ -52,6 +66,7 @@ if __name__ == '__main__':
         img, res_img = get_res(frame,
                                inference,
                                scale,
+                               tracker,
                                depth_merger,
                                given_K)
 
