@@ -5,20 +5,29 @@ import argparse
 import numpy as np
 
 from PIL import Image
-from monodepth2.infer import infer_depth
+from monodepth2.infer import infer_depth as monodepth_infer
 from yolact.infer import infer_segmentation
+from mannequinchallenge.infer import infer_depth as mannequin_infer
 
-# Monodepth2 assumes during training that intrinsics of all views are identical
+# Monodepth2 assumes during training that intrinsics of all views are identical. We will make the same assumption for
+# Mannequin too.
 K = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
-def get_res(img, scale, depth_merger='mean', given_K = False):
+def get_res(img, inference, scale, depth_merger = 'mean', given_K = False):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img_pil = Image.fromarray(img)
     
     with torch.no_grad():
-        depth_map, depth_im = infer_depth("mono+stereo_1024x320", img_pil)
+        if inference['name'] == 'monodepth':
+            depth_map, depth_im = monodepth_infer(inference['encoder'],
+                                                  inference['depth_decoder'],
+                                                  inference['input_size'],
+                                                  img_pil)
+            depth_map = depth_map[0, 0] # * 5.4
+        else:  # mannequin
+            depth_map, depth_im = mannequin_infer(img_pil)
+            depth_map = (255 - depth_map) / 7
         masks, masks_im, boxes = infer_segmentation("yolact_plus_resnet50_54_800000.pth", img)
-        depth_map = depth_map[0, 0]# * 5.4
         
     res_img = img.copy()
     
@@ -90,7 +99,7 @@ def get_res(img, scale, depth_merger='mean', given_K = False):
         res_img = cv2.circle(res_img, CENTER, int(math.e ** (-avg_depth/2) * 100), tuple([int(x) for x in c]), -1)
 
         TEXT_FACE = cv2.FONT_HERSHEY_DUPLEX
-        TEXT_SCALE = 0.8 * (10 - avg_depth) / 10
+        TEXT_SCALE = 0.8 * (10 - avg_depth) / 10 if inference['name'] == 'monodepth' else 0.8
         TEXT_THICKNESS = 1
         TEXT = f"{avg_depth:.2f}m"
 
