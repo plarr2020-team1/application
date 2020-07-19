@@ -10,12 +10,9 @@ from tracktor.oracle_tracker import OracleTracker
 from tracktor.tracker import Tracker
 from tracktor.reid.resnet import resnet50
 
-base_dir = '../tracking_wo_bnw/'
-
-tracktor = yaml.safe_load(open(f'{base_dir}experiments/cfgs/tracktor.yaml').read())['tracktor']
-reid = yaml.safe_load(open(tracktor['reid_config']))['reid']
-
-def tracker_obj():
+def tracker_obj(base_dir):
+    tracktor = yaml.safe_load(open(f'{base_dir}/experiments/cfgs/tracktor.yaml').read())['tracktor']
+    reid = yaml.safe_load(open(f"{base_dir}/{tracktor['reid_config']}"))['reid']
     # set all seeds
 
     output_dir = osp.join(get_output_dir(tracktor['module_name']), tracktor['name'])
@@ -26,7 +23,7 @@ def tracker_obj():
 
     # object detection
     obj_detect = FRCNN_FPN(num_classes=2)
-    obj_detect.load_state_dict(torch.load(tracktor['obj_detect_model'],
+    obj_detect.load_state_dict(torch.load(f"{base_dir}/{tracktor['obj_detect_model']}",
                                map_location=lambda storage, loc: storage))
 
     obj_detect.eval()
@@ -34,7 +31,7 @@ def tracker_obj():
 
     # reid
     reid_network = resnet50(pretrained=False, **reid['cnn'])
-    reid_network.load_state_dict(torch.load(tracktor['reid_weights'],
+    reid_network.load_state_dict(torch.load(f"{base_dir}/{tracktor['reid_weights']}",
                                  map_location=lambda storage, loc: storage))
     reid_network.eval()
     reid_network.cuda()

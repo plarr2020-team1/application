@@ -9,13 +9,26 @@ from monodepth2.infer import infer_depth
 from yolact.infer import infer_segmentation
 from tools import get_res
 
+import sys 
+sys.path.append('./tools')
+
+from tracktor_utils import tracker_obj
+from tracktor.utils import interpolate
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Social Distancing App.')
     parser.add_argument('--video_source', default=0, type=str, help='It can be a video path or webcam id.')
     parser.add_argument('--depth_merger', default='mean', type=str, help='It can be mean or median')
     parser.add_argument('--inference', default='monodepth', choices=['monodepth', 'mannequin'], type=str,
                         help='It can be monodepth or mannequin')
+    parser.add_argument('--with_tracker', action='store_true', help='Tracker or YOLACT.')
     args = parser.parse_args()
+
+    tracker = None
+
+    if args.with_tracker:
+        tracker = tracker_obj("./tracking_wo_bnw")
+        tracker.reset()
 
     depth_merger = args.depth_merger
     video_source = args.video_source
@@ -43,7 +56,7 @@ if __name__ == '__main__':
         if not ret:
             break
 
-        img, res_img = get_res(frame, inference, depth_merger)
+        img, res_img = get_res(frame, inference, tracker, depth_merger)
 
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         res_img = cv2.cvtColor(res_img, cv2.COLOR_RGB2BGR)
