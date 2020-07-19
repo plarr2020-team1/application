@@ -5,6 +5,7 @@ import random
 import string
 import numpy as np
 
+from monodepth2.infer import load_model
 from tools import get_res
 from base64 import decodestring
 from fastapi import FastAPI, File
@@ -16,6 +17,25 @@ def random_string(string_length=8):
     letters = string.ascii_lowercase
     return ''.join(random.choice(letters) for i in range(string_length))
 
+scale = {
+        'avg': 1,
+        'num_human': 0
+}
+inference = {'name': 'monodepth'}
+if inference['name'] == 'monodepth':
+    encoder, depth_decoder, (feed_width, feed_height) = load_model("mono+stereo_1024x320")
+    inference['encoder'] = encoder
+    inference['depth_decoder'] = depth_decoder
+    inference['input_size'] = (feed_width, feed_height)
+
+tracker = None
+
+# if args.with_tracker:
+#     tracker = tracker_obj("./tracking_wo_bnw")
+#     tracker.reset()
+
+depth_merger = 'median'
+
 app = FastAPI()
 
 app.mount("/results", StaticFiles(directory="results"), name="results")
@@ -25,7 +45,14 @@ def predict(request: Request,
             file: bytes = File(...)):
 
     img = cv2.imdecode(np.fromstring(io.BytesIO(file).read(), np.uint8), 1)
-    _, res_img = get_res(img)
+    _, res_img = get_res(
+        img,
+        inference,
+        scale,
+        tracker,
+        depth_merger,
+        False
+    )
     res_img = cv2.cvtColor(res_img, cv2.COLOR_RGB2BGR)
 
     img_name = f'results/{random_string()}.png'
