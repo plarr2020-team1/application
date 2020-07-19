@@ -5,12 +5,15 @@ import argparse
 import numpy as np
 
 from PIL import Image
+from statsmodels.nonparametric.kernel_regression import KernelReg
 from monodepth2.infer import infer_depth as monodepth_infer
 from yolact.infer import infer_segmentation
 from mannequinchallenge.infer import infer_depth as mannequin_infer
 
 from tracktor.utils import interpolate
 from torchvision.transforms import ToTensor, Compose, Resize, ToPILImage
+
+depth_tracks = {}
 
 def merge_masks(res_img, masks, masks_im, boxes, depth_merger, depth_map, inference, scale, given_K):    
     def get_threshold(x):
@@ -111,7 +114,7 @@ def merge_boxes(res_img, results, depth_merger, depth_map, inference):
     }
 
     i = 0
-    for _, r in results.items():
+    for t, r in results.items():
         x1, y1, x2, y2 = map(int, r[max(r, key=int)])
         m = np.zeros_like(depth_map)
         y1 = int(y1 * m.shape[0] / 749)
@@ -130,6 +133,15 @@ def merge_boxes(res_img, results, depth_merger, depth_map, inference):
             else:
                 raise Exception("Undefined depth_merger error!")
             x, y = int((x1 + x2) / 2), int((y1 + y2) / 2)
+
+            if t not in depth_tracks:
+                depth_tracks[t] = [avg_depth]
+            else: 
+                depth_tracks[t].append(avg_depth)
+
+            kr = KernelReg(depth_tracks[t], range(len(depth_tracks[t])),'c')
+            y_pred, _ = kr.fit(range(len(depth_tracks[t])))
+            avg_depth_s = y_pred[-1]
         except ValueError:
             #invalid avg_depth
             continue
@@ -143,7 +155,7 @@ def merge_boxes(res_img, results, depth_merger, depth_map, inference):
         TEXT_FACE = cv2.FONT_HERSHEY_DUPLEX
         TEXT_SCALE = 0.8 * (10 - avg_depth) / 10 if inference == 'monodepth' else 0.8
         TEXT_THICKNESS = 1
-        TEXT = f"{avg_depth:.2f}m"
+        TEXT = f"{avg_depth:.2f}m/{avg_depth_s:.2f}m"
 
         text_size, _ = cv2.getTextSize(TEXT, TEXT_FACE, TEXT_SCALE, TEXT_THICKNESS)
         text_origin = (CENTER[0] - text_size[0] // 2, CENTER[1] + text_size[1] // 2)
