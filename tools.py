@@ -77,7 +77,7 @@ def get_res(img, scale, depth_merger='mean', given_K = False):
                 raise Exception("Undefined depth_merger error!")
             x, y = int(np.where(person_depth != 0)[0].mean()), int(np.where(person_depth != 0)[1].mean())
         except ValueError:
-            #invalid avg_depth
+            #invalid x, y
             continue
 
         if np.isnan(avg_depth):
