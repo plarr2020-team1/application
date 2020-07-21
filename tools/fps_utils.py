@@ -4,10 +4,24 @@ import torch
 from PIL import Image
 from tracktor.utils import interpolate
 from yolact.infer import infer_segmentation
+from monodepth2.infer import infer_depth as monodepth_infer
+from mannequinchallenge.infer import infer_depth as mannequin_infer
 from torchvision.transforms import ToTensor, Compose, Resize, ToPILImage
 
+def run_first_phase_model(img, inference={'name': None}):
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img_pil = Image.fromarray(img)
+    
+    with torch.no_grad():
+        if inference['name'] == 'monodepth':
+            depth_map, depth_im = monodepth_infer(inference['encoder'],
+                                                  inference['depth_decoder'],
+                                                  inference['input_size'],
+                                                  img_pil)
+        else:
+            depth_map, depth_im = mannequin_infer(img_pil)
 
-def run_model(img, tracker=None):
+def run_second_phase_model(img, tracker=None):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img_pil = Image.fromarray(img)
     
