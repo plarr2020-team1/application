@@ -192,7 +192,7 @@ def get_res(img, inference, scale, tracker, depth_merger='mean', given_K=False):
                 ToTensor(),
             ])
             frame_batch = {
-                'img': transforms(img_pil).unsqueeze(0)
+                'img': transforms(img_pil).unsqueeze(0).cuda()
             }
             tracker.step(frame_batch)
             results = tracker.get_results()
