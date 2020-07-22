@@ -6,9 +6,8 @@ import numpy as np
 def get_yolact_mask(dataset):
     all_masks = []
     for imgs in dataset:
-        masks, marge_masks, boxes = infer_segmentation("yolact_plus_resnet50_54_800000.pth", np.array(imgs[0]))
-        print(masks.shape)
-        masks = masks[:, :, :, 0]
+        masks, merge_masks, boxes = infer_segmentation("yolact_plus_resnet50_54_800000.pth", np.array(imgs[0]))
+        masks = masks[:, :, :, 0] if len(masks) > 0 else []
         all_masks.append(masks)
     return all_masks
 
@@ -26,6 +25,9 @@ def get_segmentation_depth_map_stats(all_masks, all_depth_maps, dataset):
     for i, imgs in enumerate(dataset):
         depth_map = all_depth_maps[i]
         masks = all_masks[i]
+        if len(masks) == 0:
+            stats.append([])
+            continue
         for mask in masks:
             predicted_depth = mask * depth_map
             gt_depth = mask * imgs[1]
