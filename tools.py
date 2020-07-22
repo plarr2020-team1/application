@@ -13,7 +13,24 @@ from mannequinchallenge.infer import infer_depth as mannequin_infer
 from tracktor.utils import interpolate
 from torchvision.transforms import ToTensor, Compose, Resize, ToPILImage
 
+# reference: https://www.kalmanfilter.net/kalman1d.html
+def kalmanfilter(x,p,z,r):
+    # p - estimate unceratininty 
+    # r - measurement unceratininty ( σ2 )  
+    # z - Measured System State
+
+    # Kalman gain calculation
+    K =  p/(p+r)
+    # estimate current state
+    x1 = x + K*(z-x)
+    # update current estimate uncertainity
+    p1 = (1-K)*p
+
+    return (x1,p1)
+
 depth_tracks = {}
+depth_tracks_smoothed = {}
+depth_tracks_p = {}
 
 def merge_masks(res_img, masks, masks_im, boxes, depth_merger, depth_map, inference, scale, given_K):    
     def get_threshold(x):
@@ -97,6 +114,7 @@ def merge_masks(res_img, masks, masks_im, boxes, depth_merger, depth_map, infere
     return res_img
 
 def merge_boxes(res_img, results, depth_merger, depth_map, inference):
+    global depth_tracks
     def get_threshold(x):
         if x < 2: # less than 2m
             return 0
@@ -139,9 +157,24 @@ def merge_boxes(res_img, results, depth_merger, depth_map, inference):
             else: 
                 depth_tracks[t].append(avg_depth)
 
-            kr = KernelReg(depth_tracks[t], range(len(depth_tracks[t])),'c')
-            y_pred, _ = kr.fit(range(len(depth_tracks[t])))
-            avg_depth_s = y_pred[-1]
+            avg_depth_s = avg_depth
+            p = 1
+            if len(depth_tracks[t]) > 1:
+                avg_depth_s = depth_tracks_smoothed[t][-1]
+                p = depth_tracks_p[t][-1]
+                
+            avg_depth_s, p = kalmanfilter(avg_depth_s, p, avg_depth, 1)
+                
+            if t not in depth_tracks_smoothed:
+                depth_tracks_smoothed[t] = [avg_depth_s]
+            else: 
+                depth_tracks_smoothed[t].append(avg_depth_s)
+                    
+            if t not in depth_tracks_p:
+                depth_tracks_p[t] = [p]
+            else: 
+                depth_tracks_p[t].append(p)
+                
         except ValueError:
             #invalid avg_depth
             continue
@@ -192,7 +225,7 @@ def get_res(img, inference, scale, tracker, depth_merger='mean', given_K=False):
                 ToTensor(),
             ])
             frame_batch = {
-                'img': transforms(img_pil).unsqueeze(0).cuda()
+                'img': transforms(img_pil).unsqueeze(0)#.cuda()
             }
             tracker.step(frame_batch)
             results = tracker.get_results()
@@ -202,5 +235,5 @@ def get_res(img, inference, scale, tracker, depth_merger='mean', given_K=False):
     
     if tracker == None:
         return img, merge_masks(res_img, masks, masks_im, boxes, depth_merger, depth_map, inference['name'], scale, given_K)
-
+    
     return img, merge_boxes(res_img, results, depth_merger, depth_map, inference['name'])

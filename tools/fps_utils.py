@@ -34,8 +34,8 @@ def run_second_phase_model(img, tracker=None):
                 ToTensor(),
             ])
             frame_batch = {
-                'img': transforms(img_pil).unsqueeze(0).cuda()
+                'img': transforms(img_pil).unsqueeze(0)#.cuda()
             }
             tracker.step(frame_batch)
             results = tracker.get_results()
-            results = interpolate(results)
+#             results = interpolate(results)
