@@ -6,6 +6,7 @@ This repository is for testing and comparing different approaches to social dist
 Clone repository with submodules (`git clone --recurse-submodules ...`).
 
 **Cuda 10.1**
+**gcc min 7**
 
 Install the submodules in editable mode
 ```bash
