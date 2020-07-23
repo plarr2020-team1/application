@@ -40,16 +40,20 @@ def get_monodepth_depth(dataset):
 
 """ It is assumed that segmentation masks and depth maps are from the same dataset. """
 def get_segmentation_depth_map_stats(all_masks, all_depth_maps, dataset):
-    stats = []
+    errors = []
+    pixels = []
     for i, data in enumerate(dataset):
         depth_map = np.squeeze(all_depth_maps[data['index']])
         masks = all_masks[data['index']]['mask']
         if len(masks) == 0:
-            stats.append([])
+            errors.append([])
+            pixels.append(0)
             continue
         for mask in masks:
             mask = np.squeeze(mask)
             predicted_depth = mask * depth_map
             gt_depth = mask * data['depth']
-            stats.append(evaluateDepths(predicted_depth, gt_depth))
-    return stats
+            error, pixel_count = evaluateDepths(predicted_depth, gt_depth)
+            errors.append(error)
+            pixels.append(pixel_count)
+    return errors, pixels
