@@ -23,7 +23,7 @@ scale = {
 }
 inference = {'name': 'monodepth'}
 if inference['name'] == 'monodepth':
-    encoder, depth_decoder, (feed_width, feed_height) = load_model("mono+stereo_1024x320")
+    encoder, depth_decoder, (feed_width, feed_height) = load_model("mono+stereo_640x192")
     inference['encoder'] = encoder
     inference['depth_decoder'] = depth_decoder
     inference['input_size'] = (feed_width, feed_height)
