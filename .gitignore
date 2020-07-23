@@ -1,3 +1,4 @@
+samples/*.mp4
 src/
 models/
 *.png

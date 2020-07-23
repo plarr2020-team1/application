@@ -34,11 +34,11 @@ depth_tracks_p = {}
 
 def merge_masks(res_img, masks, masks_im, boxes, depth_merger, depth_map, inference, scale, given_K):    
     def get_threshold(x):
-        if x < 2: # less than 2m
+        if x < 1.5: # less than 2m
             return 0
-        elif x < 5: # less than 5m
+        elif x < 3: # less than 5m
             return 1
-        elif x < 8: # less than 8m
+        elif x < 4: # less than 8m
             return 2
         return 3
 
@@ -98,10 +98,10 @@ def merge_masks(res_img, masks, masks_im, boxes, depth_merger, depth_map, infere
         c = colors[get_threshold(avg_depth)]
         
         CENTER = (y, x)
-        res_img = cv2.circle(res_img, CENTER, int(math.e ** (-avg_depth/2) * 100), tuple([int(x) for x in c]), -1)
+        res_img = cv2.circle(res_img, CENTER, int(math.e ** (-avg_depth/2) * 45), tuple([int(x) for x in c]), -1)
 
         TEXT_FACE = cv2.FONT_HERSHEY_DUPLEX
-        TEXT_SCALE = 0.8 * (10 - avg_depth) / 10 if inference == 'monodepth' else 0.8
+        TEXT_SCALE = 0.75 * (10 - avg_depth) / 10 if inference == 'monodepth' else 0.75
         TEXT_THICKNESS = 1
         TEXT = f"{avg_depth:.2f}m"
 
