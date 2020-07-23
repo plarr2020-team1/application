@@ -22,6 +22,8 @@ pip install -e git+https://github.com/CharlesShang/DCNv2@master#egg=dcnv2
 
 pip install -e tracking_wo_bnw
 
+pip install -e human_depth_dataset
+
 pip install -r requirements.txt
 ```
 Retrieve checkpoint for `mannequinchallenge`
