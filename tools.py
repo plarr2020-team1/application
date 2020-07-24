@@ -60,7 +60,9 @@ def merge_masks(res_img, masks, masks_im, boxes, depth_merger, depth_map, infere
     for i, m in enumerate(masks):
         person_depth = depth_map * np.squeeze(m, -1)
         try:
-            avg_depth = person_depth[np.where(person_depth != 0)].mean()
+            inds = np.where(person_depth != 0)
+            if len(np.where(person_depth != 0)):
+                avg_depth = person_depth[inds].mean()   
             human_depths.append(avg_depth)
         except ValueError:
             continue
@@ -103,7 +105,7 @@ def merge_masks(res_img, masks, masks_im, boxes, depth_merger, depth_map, infere
         TEXT_FACE = cv2.FONT_HERSHEY_DUPLEX
         TEXT_SCALE = 0.75 * (10 - avg_depth) / 10 if inference == 'monodepth' else 0.75
         TEXT_THICKNESS = 1
-        TEXT = f"{avg_depth:.2f}m"
+        TEXT = f"{avg_depth:.1f}m"
 
         text_size, _ = cv2.getTextSize(TEXT, TEXT_FACE, TEXT_SCALE, TEXT_THICKNESS)
         text_origin = (CENTER[0] - text_size[0] // 2, CENTER[1] + text_size[1] // 2)
@@ -188,7 +190,7 @@ def merge_boxes(res_img, results, depth_merger, depth_map, inference):
         TEXT_FACE = cv2.FONT_HERSHEY_DUPLEX
         TEXT_SCALE = 0.8 * (10 - avg_depth) / 10 if inference == 'monodepth' else 0.8
         TEXT_THICKNESS = 1
-        TEXT = f"{avg_depth:.2f}m/{avg_depth_s:.2f}m"
+        TEXT = f"{avg_depth:.1f}m/{avg_depth_s:.1f}m"
 
         text_size, _ = cv2.getTextSize(TEXT, TEXT_FACE, TEXT_SCALE, TEXT_THICKNESS)
         text_origin = (CENTER[0] - text_size[0] // 2, CENTER[1] + text_size[1] // 2)
