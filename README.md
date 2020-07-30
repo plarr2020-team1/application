@@ -42,5 +42,5 @@ python run.py --video_source samples/mot16.webm --depth_merger median
 ## API Usage
 ```bash
 uvicorn rest:app --reload
-curl --location --request POST 'localhost:8000/predict' --form 'file=@example_image.jpg'
+curl --location --request POST 'localhost:8000/predict' --form 'file=@samples/people_002.png'
 ```
